@@ -6,11 +6,17 @@ require('dotenv').config();
 
 const app = express();
 
-// Enable CORS for all frontends (Netlify, Vercel, Localhost, etc.)
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
+// Enable CORS for all origins, headers, and methods
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 app.use(express.json());
 app.use('/api/auth', require('./routes/auth'));
@@ -31,6 +37,7 @@ mongoose.connect(process.env.MONGO_URI)
 
 app.get('/', (req, res) => {
   res.json({
+    version: '1.0.1',
     status: 'online',
     message: 'Miracle Hospital Backend API is running ✅',
     endpoints: {
