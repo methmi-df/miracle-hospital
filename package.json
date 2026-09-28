@@ -1,0 +1,10 @@
+{
+  "name": "miracle-hospital-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node backend/server.js",
+    "build": "npm --prefix backend install",
+    "postinstall": "npm --prefix backend install"
+  }
+}
