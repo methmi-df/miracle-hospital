@@ -6,19 +6,9 @@ require('dotenv').config();
 
 const app = express();
 
-// Allow local dev + production Vercel frontend
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  process.env.FRONTEND_URL,       // e.g. https://miracle-hospital.vercel.app
-].filter(Boolean);
-
+// Enable CORS for all frontends (Netlify, Vercel, Localhost, etc.)
 app.use(cors({
-  origin: (origin, callback) => {
-    // allow requests with no origin (curl, Postman, Railway health checks)
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS blocked: ${origin}`));
-  },
+  origin: true,
   credentials: true
 }));
 
