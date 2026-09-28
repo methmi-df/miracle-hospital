@@ -46,10 +46,39 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Update appointment status (e.g. cancel/complete)
+// Update appointment (e.g. cancel, complete, or reschedule date/time)
 router.put('/:id', async (req, res) => {
   try {
-    const appointment = await Appointment.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { date, time, doctor } = req.body;
+    
+    // If rescheduling date/time, validate
+    if (date && time) {
+      const appointmentDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (appointmentDate < today) {
+        return res.status(400).json({ message: 'Cannot reschedule to a past date.' });
+      }
+
+      // Check conflict excluding current appointment
+      const docId = doctor || (await Appointment.findById(req.params.id))?.doctor;
+      if (docId) {
+        const conflict = await Appointment.findOne({
+          _id: { $ne: req.params.id },
+          doctor: docId,
+          date: appointmentDate,
+          time,
+          status: { $ne: 'cancelled' }
+        });
+        if (conflict) {
+          return res.status(400).json({ message: 'Doctor already has an appointment booked for that date & time slot.' });
+        }
+      }
+    }
+
+    const appointment = await Appointment.findByIdAndUpdate(req.params.id, req.body, { new: true })
+      .populate('patient', 'name contact')
+      .populate('doctor', 'name department');
     res.json(appointment);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

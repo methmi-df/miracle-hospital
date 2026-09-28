@@ -7,6 +7,7 @@ async function seed() {
   await mongoose.connect(process.env.MONGO_URI);
 
   const users = [
+    { username: 'admin', password: 'admin123', role: 'admin' },
     { username: 'doctor1', password: 'doctor123', role: 'doctor' },
     { username: 'nurse1', password: 'nurse123', role: 'nurse' },
     { username: 'reception1', password: 'reception123', role: 'receptionist' },

@@ -1,7 +1,21 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import { API_URL } from '../config';
+import AppLayout from '../components/AppLayout';
+import {
+  Users,
+  Search,
+  Plus,
+  Edit2,
+  Trash2,
+  FileText,
+  UserPlus,
+  Phone,
+  MapPin,
+  Calendar,
+  X
+} from 'lucide-react';
 
 function Patients() {
   const navigate = useNavigate();
@@ -9,10 +23,15 @@ function Patients() {
   const [form, setForm] = useState({ name: '', dob: '', gender: 'male', contact: '', address: '', medicalHistory: '' });
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState('');
+  const [showForm, setShowForm] = useState(false);
 
   const fetchPatients = async () => {
-    const res = await axios.get('http://localhost:5000/api/patients');
-    setPatients(res.data);
+    try {
+      const res = await axios.get(`${API_URL}/api/patients`);
+      setPatients(res.data);
+    } catch (err) {
+      console.error('Error fetching patients:', err);
+    }
   };
 
   useEffect(() => {
@@ -26,15 +45,16 @@ function Patients() {
   const resetForm = () => {
     setForm({ name: '', dob: '', gender: 'male', contact: '', address: '', medicalHistory: '' });
     setEditingId(null);
+    setShowForm(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editingId) {
-        await axios.put(`http://localhost:5000/api/patients/${editingId}`, form);
+        await axios.put(`${API_URL}/api/patients/${editingId}`, form);
       } else {
-        await axios.post('http://localhost:5000/api/patients', form);
+        await axios.post(`${API_URL}/api/patients`, form);
       }
       resetForm();
       fetchPatients();
@@ -53,113 +73,274 @@ function Patients() {
       medicalHistory: p.medicalHistory || ''
     });
     setEditingId(p._id);
+    setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this patient? This cannot be undone.')) return;
-    await axios.delete(`http://localhost:5000/api/patients/${id}`);
-    fetchPatients();
+    try {
+      await axios.delete(`${API_URL}/api/patients/${id}`);
+      fetchPatients();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete patient.');
+    }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
+  const filteredPatients = patients.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.contact && p.contact.includes(search))
+  );
 
-      <div className="max-w-5xl mx-auto px-8 py-8">
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-          <h3 className="font-semibold text-gray-800 mb-4">
-            {editingId ? 'Edit Patient' : 'Add New Patient'}
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input name="name" placeholder="Full name" value={form.name} onChange={handleChange} required
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" />
-            <input name="dob" type="date" value={form.dob} onChange={handleChange}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" />
-            <select name="gender" value={form.gender} onChange={handleChange}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-            </select>
-            <input name="contact" placeholder="Contact number" value={form.contact} onChange={handleChange}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" />
-            <input name="address" placeholder="Address" value={form.address} onChange={handleChange}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" />
-            <input name="medicalHistory" placeholder="Medical history" value={form.medicalHistory} onChange={handleChange}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" />
+  return (
+    <AppLayout>
+      <div className="space-y-6">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+              Patient Management
+            </h2>
+            <p className="text-sm text-slate-500 mt-1">
+              Register, manage, and review patient clinical histories.
+            </p>
           </div>
-          <div className="flex gap-3 mt-4">
-            <button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-5 py-2 rounded-lg transition">
-              {editingId ? 'Save Changes' : 'Add Patient'}
-            </button>
-            {editingId && (
-              <button type="button" onClick={resetForm}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-5 py-2 rounded-lg transition">
+
+          <button
+            type="button"
+            onClick={() => {
+              if (showForm) resetForm();
+              else setShowForm(true);
+            }}
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/20 transition cursor-pointer shrink-0"
+          >
+            {showForm ? <X className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+            <span>{showForm ? 'Close Form' : 'Add New Patient'}</span>
+          </button>
+        </div>
+
+        {/* Patient Form Accordion/Modal Card */}
+        {showForm && (
+          <form
+            onSubmit={handleSubmit}
+            className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 animate-in fade-in duration-150"
+          >
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm">
+                {editingId ? 'Edit Patient Details' : 'Register New Patient'}
+              </h3>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
+                <input
+                  name="name"
+                  placeholder=""
+                  value={form.name}
+                  onChange={handleChange}
+                  required
+                  className="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Date of Birth</label>
+                <input
+                  name="dob"
+                  type="date"
+                  value={form.dob}
+                  onChange={handleChange}
+                  className="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Gender</label>
+                <select
+                  name="gender"
+                  value={form.gender}
+                  onChange={handleChange}
+                  className="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                >
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Contact</label>
+                <input
+                  name="contact"
+                  placeholder=""
+                  value={form.contact}
+                  onChange={handleChange}
+                  className="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Residential Address</label>
+                <input
+                  name="address"
+                  placeholder=""
+                  value={form.address}
+                  onChange={handleChange}
+                  className="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Medical History / Notes</label>
+                <input
+                  name="medicalHistory"
+                  placeholder=""
+                  value={form.medicalHistory}
+                  onChange={handleChange}
+                  className="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-5 pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              >
                 Cancel
               </button>
-            )}
-          </div>
-        </form>
+              <button
+                type="submit"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-blue-500/20 transition cursor-pointer"
+              >
+                {editingId ? 'Save Changes' : 'Complete Registration'}
+              </button>
+            </div>
+          </form>
+        )}
 
-        <div className="mb-4">
-          <input
-            placeholder="Search patients by name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full sm:w-80 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-          />
+        {/* Filter Bar */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="relative max-w-sm w-full">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              placeholder="Search patients by name or phone..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-xs font-medium text-slate-800 bg-white border border-slate-200/90 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition shadow-2xs"
+            />
+          </div>
+          <div className="text-xs font-medium text-slate-400">
+            Total {filteredPatients.length} patient(s)
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 text-left">
-              <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">DOB</th>
-                <th className="px-4 py-3">Gender</th>
-                <th className="px-4 py-3">Contact</th>
-                <th className="px-4 py-3">Address</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {patients
-                .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
-                .map((p) => (
-                <tr key={p._id} className="border-t border-gray-100">
-                  <td className="px-4 py-3 font-medium text-gray-800">{p.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.dob ? new Date(p.dob).toLocaleDateString() : '-'}</td>
-                  <td className="px-4 py-3 text-gray-600 capitalize">{p.gender}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.contact}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.address}</td>
-                  <td className="px-4 py-3 space-x-3">
-                    <button
-                      onClick={() => navigate(`/patients/${p._id}/records`)}
-                      className="text-teal-600 hover:text-teal-800 text-sm font-medium"
-                    >
-                      Records
-                    </button>
-                    <button
-                      onClick={() => handleEdit(p)}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(p._id)}
-                      className="text-red-600 hover:text-red-800 text-sm font-medium"
-                    >
-                      Delete
-                    </button>
-                  </td>
+        {/* Patients Table */}
+        <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50/80 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100">
+                <tr>
+                  <th className="px-5 py-3.5">Patient</th>
+                  <th className="px-4 py-3.5">DOB</th>
+                  <th className="px-4 py-3.5">Gender</th>
+                  <th className="px-4 py-3.5">Contact</th>
+                  <th className="px-4 py-3.5">Address</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100/80">
+                {filteredPatients.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="px-5 py-10 text-center text-slate-400">
+                      No patients found matching your search.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredPatients.map((p, idx) => {
+                    const initials = p.name
+                      ? p.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()
+                      : 'PT';
+                    return (
+                      <tr key={p._id} className="hover:bg-slate-50/70 transition group">
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0">
+                              {initials}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-900 group-hover:text-blue-600 transition">
+                                {p.name}
+                              </p>
+                              <p className="text-[11px] text-slate-400">
+                                {p.medicalHistory ? p.medicalHistory.slice(0, 24) + '...' : 'No conditions recorded'}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-600 font-medium">
+                          {p.dob ? new Date(p.dob).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-4 py-3.5 capitalize text-slate-600 font-medium">
+                          <span className={`inline-flex px-2 py-0.5 rounded-md font-semibold text-[11px] ${
+                            p.gender === 'female' ? 'bg-rose-50 text-rose-700' : 'bg-blue-50 text-blue-700'
+                          }`}>
+                            {p.gender}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-600 font-medium">
+                          {p.contact || '—'}
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-600 truncate max-w-xs">
+                          {p.address || '—'}
+                        </td>
+                        <td className="px-5 py-3.5 text-right space-x-2">
+                          <button
+                            onClick={() => navigate(`/patients/${p._id}/records`)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg font-semibold transition"
+                            title="Clinical Records"
+                          >
+                            <FileText className="w-4 h-4 inline" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(p)}
+                            className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg font-semibold transition"
+                            title="Edit Patient"
+                          >
+                            <Edit2 className="w-4 h-4 inline" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(p._id)}
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg font-semibold transition"
+                            title="Delete Patient"
+                          >
+                            <Trash2 className="w-4 h-4 inline" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
 

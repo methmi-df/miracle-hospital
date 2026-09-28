@@ -14,6 +14,7 @@ import Reports from './pages/Reports';
 import Register from './pages/Register';
 import MyAppointments from './pages/MyAppointments';
 import MyRecords from './pages/MyRecords';
+import Beds from './pages/Beds';
 
 function App() {
   return (
@@ -22,6 +23,9 @@ function App() {
   <Route path="/" element={<Login />} />
   <Route path="/dashboard" element={
     <ProtectedRoute><Dashboard /></ProtectedRoute>
+  } />
+  <Route path="/beds" element={
+    <ProtectedRoute allowedRoles={['admin', 'doctor', 'nurse', 'receptionist']}><Beds /></ProtectedRoute>
   } />
   <Route path="/patients" element={
     <ProtectedRoute allowedRoles={['admin', 'doctor', 'nurse', 'receptionist']}><Patients /></ProtectedRoute>
